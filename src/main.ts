@@ -17,7 +17,7 @@ class Game {
   constructor() {
     this.app = new Application({
       resizeTo: window,
-      backgroundColor: 0x105101,
+      backgroundColor: 0x050101,
     });
 
     document.body.appendChild(this.app.view as HTMLCanvasElement);

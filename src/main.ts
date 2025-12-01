@@ -1,11 +1,15 @@
 import { Application } from 'pixi.js';
 import { Scene } from './core/Scene';
+import { AceOfShadowsScene } from './scenes/AceOfShadows';
+import { MagicWordsScene } from './scenes/MagicWords';
+import { PhoenixFlameScene } from './scenes/PhoenixFlame';
 import { FpsCounter } from './ui/FpsCounter';
 import { Menu, MenuItemKey } from './ui/Menu';
 
 class Game {
   private app: Application;
-  private scenes: Partial<Record<MenuItemKey, Scene>> = {};
+  private scenes: Record<MenuItemKey, Scene>;
+  private currentScene: Scene;
 
   private menu: Menu;
   private fps: FpsCounter;
@@ -21,18 +25,48 @@ class Game {
     this.fps = new FpsCounter(this.app);
 
     this.menu = new Menu(this.app, (key) => {
-      // TODO: handle menu change
+      this.switchScene(key);
     });
 
-    this.onResize();
+    this.scenes = {
+      ace: new AceOfShadowsScene(),
+      magic: new MagicWordsScene(),
+      phoenix: new PhoenixFlameScene(),
+    };
 
-    window.addEventListener('resize', this.onResize);
+    this.currentScene = this.scenes.ace;
+    this.app.stage.addChild(this.currentScene.container);
+
+    this.app.ticker.add(this.update, this);
+    window.addEventListener('resize', this.resize);
+    this.resize();
   }
 
-  onResize = (): void => {
+  private update(): void {
+    const dt = this.app.ticker.deltaMS / 1000;
+    this.currentScene.update(dt);
+  }
+
+  private switchScene(key: MenuItemKey): void {
+    this.currentScene.reset();
+    this.app.stage.removeChild(this.currentScene.container);
+
+    this.currentScene = this.scenes[key];
+    this.currentScene.reset();
+    this.app.stage.addChild(this.currentScene.container);
+
+    this.currentScene.resize(window.innerWidth, window.innerHeight);
+  }
+
+  resize = (): void => {
     this.app.resize();
-    this.menu.onResize();
-    this.fps.onResize();
+    this.menu.resize();
+    this.fps.resize();
+
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    this.currentScene.resize(screenWidth, screenHeight);
   };
 }
 

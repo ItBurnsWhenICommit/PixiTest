@@ -80,9 +80,8 @@ export class Menu extends Container {
     this.y = 8;
   }
   
-  onResize = (): void => {
+  resize = (): void => {
     const w = window.innerWidth;
-    const h = window.innerHeight;
     this.layout(w);
-  }
+  };
 }

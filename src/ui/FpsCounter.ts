@@ -26,12 +26,12 @@ export class FpsCounter extends Container {
     this.zIndex = 10_000;
 
     app.stage.addChild(this);
-    app.ticker.add(this.onTick, this);
+    app.ticker.add(this.update, this);
     
-    this.onResize();
+    this.resize();
   }
 
-  private onTick(): void {
+  private update(): void {
     const dt = this.app.ticker.deltaMS / 1000;
     this.elapsed += dt;
     this.frames++;
@@ -45,7 +45,7 @@ export class FpsCounter extends Container {
     }
   }
 
-  onResize = (): void => {
+  resize = (): void => {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const minDimension = Math.min(w, h);

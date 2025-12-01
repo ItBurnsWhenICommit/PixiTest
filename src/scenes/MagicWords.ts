@@ -126,6 +126,9 @@ export class MagicWordsScene implements Scene {
     }
 
     // Load avatar textures and positions with proper loader hints
+    const shuffledColors = [...CHARACTER_COLORS].sort(() => Math.random() - 0.5);
+    let colorIndex = 0;
+
     for (const avatar of this.chatData.avatars) {
       try {
         const texture = await Assets.load({
@@ -134,8 +137,10 @@ export class MagicWordsScene implements Scene {
         });
         this.avatarTextures.set(avatar.name, texture);
         this.avatarPositions.set(avatar.name, avatar.position);
-        const randomColor = CHARACTER_COLORS[Math.floor(Math.random() * CHARACTER_COLORS.length)];
-        this.characterColors.set(avatar.name, randomColor);
+        // Assign unique color, cycling if more characters than colors
+        const uniqueColor = shuffledColors[colorIndex % shuffledColors.length];
+        colorIndex++;
+        this.characterColors.set(avatar.name, uniqueColor);
       } catch (e) {
         console.warn(`Failed to load avatar: ${avatar.name}`, e);
       }

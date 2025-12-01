@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
 
-export type MenuItemKey = 'ace' | 'magic' | 'phoenix';
+export type MenuItemKey = 'ace' | 'magic' | 'phoenix' | 'phoenixShader';
 export type MenuChangeHandler = (key: MenuItemKey) => void;
 
 interface MenuItem {
@@ -23,6 +23,7 @@ export class Menu extends Container {
       { key: 'ace', label: 'Ace of Shadows' },
       { key: 'magic', label: 'Magic Words' },
       { key: 'phoenix', label: 'Phoenix Flame' },
+      { key: 'phoenixShader', label: 'Phoenix Flame (Shader)' },
     ];
 
     let x = 0;

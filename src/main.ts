@@ -3,6 +3,7 @@ import { Scene } from './core/Scene';
 import { AceOfShadowsScene } from './scenes/AceOfShadows';
 import { MagicWordsScene } from './scenes/MagicWords';
 import { PhoenixFlameScene } from './scenes/PhoenixFlame';
+import { PhoenixFlameShaderScene } from './scenes/PhoenixFlameShader';
 import { FpsCounter } from './ui/FpsCounter';
 import { Menu, MenuItemKey } from './ui/Menu';
 
@@ -32,6 +33,7 @@ class Game {
       ace: new AceOfShadowsScene(),
       magic: new MagicWordsScene(),
       phoenix: new PhoenixFlameScene(),
+      phoenixShader: new PhoenixFlameShaderScene(),
     };
 
     this.currentScene = this.scenes.ace;

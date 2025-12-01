@@ -24,8 +24,9 @@ interface ChatData {
 }
 
 const API_URL = 'https://private-624120-softgamesassignment.apiary-mock.com/v2/magicwords';
-const MESSAGE_DELAY = 2;
 const MAX_VISIBLE_MESSAGES = 12;
+const CHAR_DELAY = 0.03;
+const POST_MESSAGE_DELAY = 0.5;
 
 const CHARACTER_COLORS: number[] = [
   0x2a4d6e,
@@ -50,12 +51,20 @@ export class MagicWordsScene implements Scene {
   private chatContainer: Container = new Container();
   private messages: Container[] = [];
   private currentMessageIndex = 0;
-  private timeSinceLastMessage = 0;
   private dialogueComplete = false;
   private characterColors: Map<string, number> = new Map();
 
   private screenWidth = 0;
   private screenHeight = 0;
+
+  // Typewriter state
+  private isTyping = false;
+  private typewriterTime = 0;
+  private currentCharIndex = 0;
+  private currentTextElements: (Text | Sprite)[] = [];
+  private postMessageTime = 0;
+  private currentBubbleBg: Graphics | null = null;
+  private currentBubbleData: { nameHeight: number; bubbleWidth: number; contentContainer: Container; bubbleColor: number } | null = null;
 
   // Responsive sizes calculated from screen dimensions
   private get baseUnit(): number {
@@ -145,11 +154,12 @@ export class MagicWordsScene implements Scene {
   private showNextMessage(): void {
     if (!this.chatData || this.currentMessageIndex >= this.chatData.dialogue.length) {
       this.dialogueComplete = true;
+      this.isTyping = false;
       return;
     }
 
     const dialogue = this.chatData.dialogue[this.currentMessageIndex];
-    const bubble = this.createMessageBubble(dialogue);
+    const { bubble, elements, bg, contentContainer, nameHeight, bubbleWidth, bubbleColor } = this.createMessageBubble(dialogue, true);
     this.messages.push(bubble);
     this.chatContainer.addChild(bubble);
 
@@ -162,11 +172,19 @@ export class MagicWordsScene implements Scene {
       }
     }
 
+    // Start typewriter effect
+    this.currentTextElements = elements;
+    this.currentCharIndex = 0;
+    this.typewriterTime = 0;
+    this.isTyping = true;
+    this.currentBubbleBg = bg;
+    this.currentBubbleData = { nameHeight, bubbleWidth, contentContainer, bubbleColor };
+
     this.currentMessageIndex++;
     this.layoutMessages();
   }
 
-  private createMessageBubble(dialogue: DialogueEntry): Container {
+  private createMessageBubble(dialogue: DialogueEntry, hidden = false): { bubble: Container; elements: (Text | Sprite)[]; bg: Graphics; contentContainer: Container; nameHeight: number; bubbleWidth: number; bgX: number; bubbleColor: number } {
     const bubble = new Container();
     const isLeft = this.avatarPositions.get(dialogue.name) === 'left';
 
@@ -198,60 +216,85 @@ export class MagicWordsScene implements Scene {
     );
     bubble.addChild(nameText);
 
-    // Parse text and create content with inline emojis
-    const contentContainer = this.createTextWithEmojis(dialogue.text, maxBubbleWidth - this.bubblePadding * 2 - this.baseUnit);
+    const { container: contentContainer, elements } = this.createTextWithEmojis(
+      dialogue.text,
+      maxBubbleWidth - this.bubblePadding * 2 - this.baseUnit,
+      hidden
+    );
     bubble.addChild(contentContainer);
 
-    // Calculate bubble dimensions
-    const contentHeight = contentContainer.height;
-    const bubbleWidth = maxBubbleWidth;
-    const bubbleHeight = nameText.height + contentHeight + this.bubblePadding * 2 + this.baseUnit * 0.5;
-
-    // Draw bubble background with character-specific color
-    const bubbleColor = this.characterColors.get(dialogue.name) ?? 0x2a4d6e;
-    const borderRadius = this.baseUnit * 1.5;
-    bg.beginFill(bubbleColor, 0.9);
-    bg.lineStyle(Math.max(1, this.baseUnit * 0.2), 0xffffff, 0.4);
-    bg.drawRoundedRect(0, 0, bubbleWidth, bubbleHeight, borderRadius);
-    bg.endFill();
-
-    // Position elements
     const avatarGap = this.baseUnit;
+    let bgX = 0;
     if (isLeft) {
       if (avatar) {
         avatar.x = 0;
         avatar.y = 0;
       }
-      bg.x = avatar ? this.avatarSize + avatarGap : 0;
+      bgX = avatar ? this.avatarSize + avatarGap : 0;
     } else {
-      bg.x = 0;
+      bgX = 0;
       if (avatar) {
-        avatar.x = bubbleWidth + avatarGap;
         avatar.y = 0;
       }
     }
 
+    bg.x = bgX;
     bg.y = 0;
-    nameText.x = bg.x + this.bubblePadding;
+    nameText.x = bgX + this.bubblePadding;
     nameText.y = this.bubblePadding;
-    contentContainer.x = bg.x + this.bubblePadding;
+    contentContainer.x = bgX + this.bubblePadding;
     contentContainer.y = nameText.y + nameText.height + this.baseUnit * 0.5;
 
-    return bubble;
+    // Calculate bubble dimensions based on visible content
+    const bubbleColor = this.characterColors.get(dialogue.name) ?? 0x2a4d6e;
+    const bubbleWidth = maxBubbleWidth;
+
+    // Draw initial bubble (will be redrawn as content appears)
+    this.drawBubbleBackground(bg, bubbleWidth, nameText.height, contentContainer, bubbleColor, hidden);
+
+    // Position avatar for right-side bubbles (after we know bubble width)
+    if (!isLeft && avatar) {
+      avatar.x = bubbleWidth + avatarGap;
+    }
+
+    return { bubble, elements, bg, contentContainer, nameHeight: nameText.height, bubbleWidth, bgX, bubbleColor };
   }
 
-  private createTextWithEmojis(text: string, maxWidth: number): Container {
+  private drawBubbleBackground(bg: Graphics, bubbleWidth: number, nameHeight: number, contentContainer: Container, bubbleColor: number, hidden: boolean): void {
+    bg.clear();
+
+    // Calculate visible content height
+    let visibleHeight = 0;
+    for (const child of contentContainer.children) {
+      if (child.visible) {
+        visibleHeight = Math.max(visibleHeight, child.y + (child as Text | Sprite).height);
+      }
+    }
+
+    // Minimum height shows just the name if no content visible yet
+    const minHeight = nameHeight + this.bubblePadding * 2 + this.baseUnit * 0.5;
+    const bubbleHeight = hidden || visibleHeight === 0
+      ? minHeight
+      : nameHeight + visibleHeight + this.bubblePadding * 2 + this.baseUnit;
+
+    const borderRadius = this.baseUnit * 1.5;
+    bg.beginFill(bubbleColor, 0.9);
+    bg.lineStyle(Math.max(1, this.baseUnit * 0.2), 0xffffff, 0.4);
+    bg.drawRoundedRect(0, 0, bubbleWidth, bubbleHeight, borderRadius);
+    bg.endFill();
+  }
+
+  private createTextWithEmojis(text: string, maxWidth: number, hidden = false): { container: Container; elements: (Text | Sprite)[] } {
     const container = new Container();
+    const elements: (Text | Sprite)[] = [];
     const emojiSz = this.emojiSize;
     const lineGap = this.baseUnit * 0.5;
+    const charGap = this.baseUnit * 0.05;
 
-    const wordGap = this.baseUnit * 0.8;
     const style = new TextStyle({
       fontFamily: "Comic Relief",
       fill: '#ffffff',
       fontSize: this.fontSize,
-      wordWrap: true,
-      wordWrapWidth: maxWidth,
     });
 
     // Parse text for emoji patterns like {emoji_name}
@@ -271,11 +314,15 @@ export class MagicWordsScene implements Scene {
       parts.push({ type: 'text', content: text.slice(lastIndex) });
     }
 
-    // Layout the parts
+    // Layout the parts - word by word, then character by character within words
     let x = 0;
     let y = 0;
     let lineHeight = emojiSz;
-    let maxX = 0;
+
+    // Measure space width
+    const spaceText = new Text(' ', style);
+    const spaceWidth = spaceText.width + this.baseUnit * 0.3;
+    spaceText.destroy();
 
     for (const part of parts) {
       if (part.type === 'emoji') {
@@ -292,41 +339,59 @@ export class MagicWordsScene implements Scene {
           sprite.height = emojiSz;
           sprite.x = x;
           sprite.y = y;
+          sprite.visible = !hidden;
           container.addChild(sprite);
-          x += emojiSz + lineGap;
-          maxX = Math.max(maxX, x);
+          elements.push(sprite);
+          x += emojiSz + charGap;
         }
       } else {
-        // Text part - may contain spaces that need trimming at line start
-        let content = part.content;
-        if (x === 0) {
-          content = content.trimStart();
-        }
+        // Text part - split into words first for proper word wrap
+        const content = part.content;
+        // Split by spaces but keep track of spacing
+        const tokens = content.split(/(\s+)/);
 
-        // Split by words for word wrapping
-        const words = content.split(/\s+/).filter(w => w.length > 0);
-        for (const word of words) {
-          const testText = new Text(word, style);
-          const wordWidth = testText.width;
+        for (const token of tokens) {
+          // Handle whitespace tokens
+          if (/^\s+$/.test(token)) {
+            for (const char of token) {
+              if (char === '\n') {
+                x = 0;
+                y += lineHeight + lineGap;
+              } else {
+                x += spaceWidth;
+              }
+            }
+            continue;
+          }
 
-          // Check if word would overflow
+          // It's a word - measure the whole word first
+          const wordMeasure = new Text(token, style);
+          const wordWidth = wordMeasure.width;
+          wordMeasure.destroy();
+
+          // Check if word needs to wrap to next line
           if (x + wordWidth > maxWidth && x > 0) {
             x = 0;
             y += lineHeight + lineGap;
           }
 
-          testText.x = x;
-          testText.y = y;
-          container.addChild(testText);
+          // Now render each character of the word
+          for (const char of token) {
+            const charText = new Text(char, style);
+            charText.x = x;
+            charText.y = y;
+            charText.visible = !hidden;
+            container.addChild(charText);
+            elements.push(charText);
 
-          x += wordWidth + wordGap;
-          maxX = Math.max(maxX, x);
-          lineHeight = Math.max(lineHeight, testText.height);
+            x += charText.width + charGap;
+            lineHeight = Math.max(lineHeight, charText.height);
+          }
         }
       }
     }
 
-    return container;
+    return { container, elements };
   }
 
   private layoutMessages(): void {
@@ -363,10 +428,44 @@ export class MagicWordsScene implements Scene {
   update(dt: number): void {
     if (!this.loaded || this.dialogueComplete) return;
 
-    this.timeSinceLastMessage += dt;
-    if (this.timeSinceLastMessage >= MESSAGE_DELAY) {
-      this.timeSinceLastMessage = 0;
-      this.showNextMessage();
+    if (this.isTyping) {
+      // Typewriter effect
+      this.typewriterTime += dt;
+      let needsRedraw = false;
+
+      while (this.typewriterTime >= CHAR_DELAY && this.currentCharIndex < this.currentTextElements.length) {
+        this.currentTextElements[this.currentCharIndex].visible = true;
+        this.currentCharIndex++;
+        this.typewriterTime -= CHAR_DELAY;
+        needsRedraw = true;
+      }
+
+      // Redraw bubble background to fit content
+      if (needsRedraw && this.currentBubbleBg && this.currentBubbleData) {
+        this.drawBubbleBackground(
+          this.currentBubbleBg,
+          this.currentBubbleData.bubbleWidth,
+          this.currentBubbleData.nameHeight,
+          this.currentBubbleData.contentContainer,
+          this.currentBubbleData.bubbleColor,
+          false
+        );
+        this.layoutMessages();
+      }
+
+      // Finished typing current message
+      if (this.currentCharIndex >= this.currentTextElements.length) {
+        this.isTyping = false;
+        this.postMessageTime = 0;
+        this.currentBubbleBg = null;
+        this.currentBubbleData = null;
+      }
+    } else {
+      // Wait before showing next message
+      this.postMessageTime += dt;
+      if (this.postMessageTime >= POST_MESSAGE_DELAY) {
+        this.showNextMessage();
+      }
     }
   }
 
@@ -383,6 +482,9 @@ export class MagicWordsScene implements Scene {
   private rebuildMessages(): void {
     if (!this.chatData) return;
 
+    // Remember if we were typing (need to restart current message)
+    const wasTyping = this.isTyping;
+
     // Clear existing messages
     for (const msg of this.messages) {
       msg.destroy({ children: true });
@@ -390,18 +492,31 @@ export class MagicWordsScene implements Scene {
     this.messages = [];
     this.chatContainer.removeChildren();
 
-    // Rebuild all shown messages
-    const endIndex = this.currentMessageIndex;
+    // Reset typewriter state since bubbles are destroyed
+    this.isTyping = false;
+    this.currentBubbleBg = null;
+    this.currentBubbleData = null;
+    this.currentTextElements = [];
+
+    // Rebuild all completed messages (all visible, no typewriter)
+    // If we were typing, rebuild up to the previous message only
+    const endIndex = wasTyping ? this.currentMessageIndex - 1 : this.currentMessageIndex;
     const startIndex = Math.max(0, endIndex - MAX_VISIBLE_MESSAGES);
 
     for (let i = startIndex; i < endIndex; i++) {
       const dialogue = this.chatData.dialogue[i];
-      const bubble = this.createMessageBubble(dialogue);
+      const { bubble } = this.createMessageBubble(dialogue, false);
       this.messages.push(bubble);
       this.chatContainer.addChild(bubble);
     }
 
     this.layoutMessages();
+
+    // If we were typing, restart the current message
+    if (wasTyping && this.currentMessageIndex > 0) {
+      this.currentMessageIndex--; // Back up to re-show the current message
+      this.showNextMessage();
+    }
   }
 
   reset(): void {
@@ -414,7 +529,13 @@ export class MagicWordsScene implements Scene {
 
     // Reset state
     this.currentMessageIndex = 0;
-    this.timeSinceLastMessage = 0;
+    this.isTyping = false;
+    this.typewriterTime = 0;
+    this.currentCharIndex = 0;
+    this.currentTextElements = [];
+    this.postMessageTime = 0;
+    this.currentBubbleBg = null;
+    this.currentBubbleData = null;
     this.dialogueComplete = false;
 
     // Show first message again if data loaded

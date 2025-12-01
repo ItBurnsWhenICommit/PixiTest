@@ -1,9 +1,11 @@
 import { Application } from 'pixi.js';
+import { FpsCounter } from './ui/FpsCounter';
 
 const app = new Application({
-    width: 800,
-    height: 600,
-    backgroundColor: 0x1099bb,
+    resizeTo: window,
+    backgroundColor: 0x105101,
 });
 
 document.body.appendChild(app.view as HTMLCanvasElement);
+
+new FpsCounter(app);

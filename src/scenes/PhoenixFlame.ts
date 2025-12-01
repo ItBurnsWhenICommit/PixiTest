@@ -19,7 +19,8 @@ export class PhoenixFlameScene implements Scene {
   }
 
   private async loadAssets(): Promise<void> {
-    await Assets.load({ alias: 'fire', src: '/assets/fire.json' });
+    const base = import.meta.env.BASE_URL;
+    await Assets.load({ alias: 'fire', src: `${base}assets/fire.json` });
 
     // Get frames in order (1_0.png to 1_14.png)
     const frameNames: string[] = [];

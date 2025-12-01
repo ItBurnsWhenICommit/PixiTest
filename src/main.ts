@@ -63,6 +63,7 @@ class Game {
   resize = (): void => {
     this.app.resize();
     this.menu.resize();
+    this.fps.setMenuHeight(this.menu.getMenuHeight());
     this.fps.resize();
 
     const screenWidth = window.innerWidth;

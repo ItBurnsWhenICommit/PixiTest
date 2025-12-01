@@ -9,8 +9,9 @@ export class FpsCounter extends Container {
 
   private padding = 8;
   private scaleFactor = 1;
+  private menuHeight = 0;
 
-  constructor(private app:Application) {
+  constructor(private app: Application) {
     super();
 
     this.background = new Graphics();
@@ -27,7 +28,7 @@ export class FpsCounter extends Container {
 
     app.stage.addChild(this);
     app.ticker.add(this.update, this);
-    
+
     this.resize();
   }
 
@@ -45,6 +46,11 @@ export class FpsCounter extends Container {
     }
   }
 
+  setMenuHeight(height: number): void {
+    this.menuHeight = height;
+    this.y = this.menuHeight;
+  }
+
   resize = (): void => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -53,19 +59,20 @@ export class FpsCounter extends Container {
     const baseFontSize = 14;
 
     if (minDimension < 768) {
-      // Mobile
       this.scaleFactor = minDimension / 768;
     } else {
-      // Desktop
       this.scaleFactor = 1;
     }
-    
+
     this.scaleFactor = Math.max(this.scaleFactor, minScaleFactor);
     this.text.style.fontSize = baseFontSize * this.scaleFactor;
     this.padding = 8 * this.scaleFactor;
 
     this.text.x = this.padding;
     this.text.y = this.padding;
+
+    this.x = 0;
+    this.y = this.menuHeight;
 
     this.updateBackground();
   }

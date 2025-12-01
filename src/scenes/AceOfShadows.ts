@@ -20,11 +20,10 @@ export class AceOfShadowsScene implements Scene {
   }
 
   private async loadAssets(): Promise<void> {
-    const base = import.meta.env.BASE_URL;
     await Assets.load([
-      { alias: 'card_blue', src: `${base}assets/card_blue.png` },
-      { alias: 'card_red', src: `${base}assets/card_red.png` },
-      { alias: 'card_yellow', src: `${base}assets/card_yellow.png` },
+      { alias: 'card_blue', src: 'assets/card_blue.png' },
+      { alias: 'card_red', src: 'assets/card_red.png' },
+      { alias: 'card_yellow', src: 'assets/card_yellow.png' },
     ]);
 
     const blueTexture = Assets.get('card_blue');

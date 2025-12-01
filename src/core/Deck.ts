@@ -4,14 +4,15 @@ import { Card } from './Card';
 export class Deck extends Container {
   private cards: Card[] = [];
   private cardScale = 1;
+  private readonly cardSpacing = 0.01;
 
   constructor(texture: Texture, cardCount: number) {
     super();
 
     for (let i = 0; i < cardCount; i++) {
       const card = new Card(texture);
-      card.y = card.cardHeight * 0.01 * i + (Math.random() * card.cardHeight * 0.05);
-      card.x = card.cardWidth * 0.01 + (Math.random() * card.cardHeight * 0.05);
+      card.y = card.cardHeight * this.cardSpacing * i;
+      card.x = (Math.random() - 0.5) * card.cardHeight * 0.05;
       card.rotation = (Math.random() * 6 - 3) * (Math.PI / 180);
       this.cards.push(card);
       this.addChild(card);
@@ -47,12 +48,12 @@ export class Deck extends Container {
   addCardToBottom(card: Card): void {
     const bottomY = this.getBottomY();
     card.y = bottomY;
-    card.x = card.cardWidth * 0.01 + (Math.random() * card.cardHeight * 0.05);
+    card.x = (Math.random() - 0.5) * card.cardHeight * 0.05;
     card.rotation = (Math.random() * 6 - 3) * (Math.PI / 180);
     card.setScale(this.cardScale);
 
     // Shift all existing cards up by one position
-    const offsetY = card.cardHeight * 0.01 + (Math.random() * card.cardHeight * 0.05);
+    const offsetY = card.cardHeight * this.cardSpacing;
     for (const existingCard of this.cards) {
       existingCard.y += offsetY;
     }

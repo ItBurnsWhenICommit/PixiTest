@@ -52,23 +52,23 @@ export class AceOfShadowsScene implements Scene {
     card.x = localPos.x;
     card.y = localPos.y;
 
-    // Calculate target position in container coordinates
-    const targetLocalY = toDeck.getTopY();
-    const targetGlobal = toDeck.toGlobal({ x: 0, y: targetLocalY });
+    const targetBottomY = toDeck.getBottomY();
+    const targetGlobal = toDeck.toGlobal({ x: 0, y: targetBottomY });
     const targetLocal = this.container.toLocal(targetGlobal);
-
-    // Set zIndex to target deck's top Y so card appears on top when it lands
-    card.zIndex = targetLocal.y;
 
     this.container.addChild(card);
     this.movingCards.push(card);
 
-    card.animateTo(targetLocal.x, targetLocal.y, ANIMATION_DURATION, () => {
+    // Start on top (high zIndex), end at bottom (low zIndex)
+    const startZIndex = 10000;
+    const endZIndex = -1;
+
+    card.animateTo(targetLocal.x, targetLocal.y, ANIMATION_DURATION, startZIndex, endZIndex, () => {
       const idx = this.movingCards.indexOf(card);
       if (idx !== -1) this.movingCards.splice(idx, 1);
 
       this.container.removeChild(card);
-      toDeck.addCard(card);
+      toDeck.addCardToBottom(card);
     });
   }
 

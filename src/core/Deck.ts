@@ -30,10 +30,9 @@ export class Deck extends Container {
     return this.cards[this.cards.length - 1];
   }
 
-  getTopY(): number {
-    const topCard = this.getTopCard();
-    if (topCard) {
-      return topCard.y + topCard.cardHeight * 0.01 + (Math.random() * topCard.cardHeight * 0.05);
+  getBottomY(): number {
+    if (this.cards.length > 0) {
+      return this.cards[0].y;
     }
     return 0;
   }
@@ -45,13 +44,22 @@ export class Deck extends Container {
     return card;
   }
 
-  addCard(card: Card): void {
-    card.y = this.getTopY();
+  addCardToBottom(card: Card): void {
+    const bottomY = this.getBottomY();
+    card.y = bottomY;
     card.x = card.cardWidth * 0.01 + (Math.random() * card.cardHeight * 0.05);
     card.rotation = (Math.random() * 6 - 3) * (Math.PI / 180);
     card.setScale(this.cardScale);
-    this.cards.push(card);
-    this.addChild(card);
+
+    // Shift all existing cards up by one position
+    const offsetY = card.cardHeight * 0.01 + (Math.random() * card.cardHeight * 0.05);
+    for (const existingCard of this.cards) {
+      existingCard.y += offsetY;
+    }
+
+    // Insert at bottom of array and display list
+    this.cards.unshift(card);
+    this.addChildAt(card, 0);
   }
 
   setCardScale(scale: number): void {

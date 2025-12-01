@@ -9,6 +9,8 @@ export interface CardAnimation {
   endY: number;
   startRotation: number;
   endRotation: number;
+  startZIndex: number;
+  endZIndex: number;
   elapsed: number;
   duration: number;
   onComplete?: () => void;
@@ -42,7 +44,7 @@ export class Card extends Container {
     this.sprite.scale.set(scale);
   }
 
-  animateTo(endX: number, endY: number, duration: number, onComplete?: () => void): void {
+  animateTo(endX: number, endY: number, duration: number, startZIndex: number, endZIndex: number, onComplete?: () => void): void {
     const midX = (this.x + endX) / 2;
     const midY = (this.y + endY) / 2;
 
@@ -64,6 +66,8 @@ export class Card extends Container {
     // Random end rotation between -3 and +3 degrees
     const endRotation = (Math.random() * 6 - 3) * (Math.PI / 180);
 
+    this.zIndex = startZIndex;
+
     this.animation = {
       startX: this.x,
       startY: this.y,
@@ -73,6 +77,8 @@ export class Card extends Container {
       endY,
       startRotation: this.rotation,
       endRotation,
+      startZIndex,
+      endZIndex,
       elapsed: 0,
       duration,
       onComplete,
@@ -101,6 +107,13 @@ export class Card extends Container {
     // Smooth rotation interpolation
     this.rotation = this.animation.startRotation
                   + (this.animation.endRotation - this.animation.startRotation) * bellCurve;
+
+    // Interpolate zIndex - switch at halfway point
+    if (t < 0.5) {
+      this.zIndex = this.animation.startZIndex;
+    } else {
+      this.zIndex = this.animation.endZIndex;
+    }
 
     if (t >= 1) {
       const onComplete = this.animation.onComplete;
